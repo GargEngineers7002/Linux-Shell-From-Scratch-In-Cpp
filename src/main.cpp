@@ -27,7 +27,7 @@ int main() {
       std::cout << input.substr(space_pos + 1) << std::endl;
     } else if (first_word == "type") {
       if (builtins.count(input.substr(5))) {
-        std::cout << input.substr(5) << "is a shell builtin" << std::endl;
+        std::cout << input.substr(5) << " is a shell builtin" << std::endl;
       } else {
         std::cout << input.substr(5) << ": not found" << std::endl;
       }

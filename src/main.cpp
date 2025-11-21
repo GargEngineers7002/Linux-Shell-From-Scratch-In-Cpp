@@ -18,8 +18,9 @@ int main() {
     std::string first_word = input.substr(0, space_pos);
     if (first_word == "echo") {
       std::cout << input.substr(space_pos + 1) << std::endl;
+    } else {
+      std::cout << input << ": command not found" << std::endl;
     }
-    std::cout << input << ": command not found" << std::endl;
   }
 
   return 0;

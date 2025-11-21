@@ -14,6 +14,11 @@ int main() {
     if (input == "exit") {
       break;
     }
+    size_t space_pos = input.find(' ');
+    std::string first_word = input.substr(0, space_pos);
+    if (first_word == "echo") {
+      std::cout << input.substr(space_pos + 1) << std::endl;
+    }
     std::cout << input << ": command not found" << std::endl;
   }
 

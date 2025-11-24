@@ -4,7 +4,6 @@
 #include <string>
 #include <unistd.h>
 #include <unordered_set>
-#include <vector>
 
 std::unordered_set<std::string> builtins = {"echo", "type", "exit"};
 
@@ -80,6 +79,10 @@ int main()
           std::cout << argument << ": not found" << std::endl;
         }
       }
+    }
+    else if (check_PATH(command) != "")
+    {
+      std::system((command + argument).c_str());
     }
     else
     {

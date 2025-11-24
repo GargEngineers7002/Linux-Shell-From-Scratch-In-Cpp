@@ -80,9 +80,9 @@ int main()
         }
       }
     }
-    else if (check_PATH(command) != "")
+    else if (!check_PATH(command).empty())
     {
-      std::system((command + argument).c_str());
+      std::system((command + ' ' + argument).c_str());
     }
     else
     {

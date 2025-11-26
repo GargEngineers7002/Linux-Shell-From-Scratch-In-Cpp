@@ -76,10 +76,17 @@ int main()
     }
     else if (command == "cd")
     {
-      if (chdir(argument.c_str()) == -1)
+      if (argument == "~")
       {
-        std::cout << "cd: " << argument << ": No such file or directory"
-                  << std::endl;
+        chdir(getenv("HOME"));
+      }
+      else
+      {
+        if (chdir(argument.c_str()) == -1)
+        {
+          std::cout << "cd: " << argument << ": No such file or directory"
+                    << std::endl;
+        }
       }
     }
     else if (command == "type")

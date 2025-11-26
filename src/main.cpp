@@ -9,7 +9,8 @@
 #include <unordered_set>
 #include <vector>
 
-std::unordered_set<std::string> builtins = {"echo", "type", "exit", "pwd"};
+std::unordered_set<std::string> builtins = {"echo", "type", "exit", "pwd",
+                                            "cd"};
 
 std::string check_PATH(std::string command)
 {
@@ -72,6 +73,14 @@ int main()
       char cwd[PATH_MAX];
       getcwd(cwd, PATH_MAX);
       std::cout << cwd << std::endl;
+    }
+    else if (command == "cd")
+    {
+      if (chdir(argument.c_str()) == -1)
+      {
+        std::cout << "cd: " << argument << ": No such file or directory"
+                  << std::endl;
+      }
     }
     else if (command == "type")
     {

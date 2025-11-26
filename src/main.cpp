@@ -1,11 +1,15 @@
 #include <cstdlib>
 #include <iostream>
+#include <limits.h>
 #include <sstream>
 #include <string>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <unordered_set>
+#include <vector>
 
-std::unordered_set<std::string> builtins = {"echo", "type", "exit"};
+std::unordered_set<std::string> builtins = {"echo", "type", "exit", "pwd"};
 
 std::string check_PATH(std::string command)
 {
@@ -52,6 +56,8 @@ int main()
     std::string argument;
     std::getline(ss, argument);
 
+    ss.clear();
+
     if (!argument.empty() && argument[0] == ' ')
     {
       argument = argument.substr(1);
@@ -60,6 +66,12 @@ int main()
     if (command == "echo")
     {
       std::cout << argument << std::endl;
+    }
+    else if (command == "pwd")
+    {
+      char cwd[PATH_MAX];
+      getcwd(cwd, PATH_MAX);
+      std::cout << cwd << std::endl;
     }
     else if (command == "type")
     {
@@ -82,11 +94,45 @@ int main()
     }
     else if (!check_PATH(command).empty())
     {
-      std::system((command + ' ' + argument).c_str());
+      std::vector<std::string> args;
+      args.push_back(command);
+
+      if (!argument.empty())
+      {
+        ss.str(argument);
+        std::string segment;
+        while (ss >> segment)
+        {
+          args.push_back(segment);
+        }
+      }
+
+      std::vector<char *> c_args;
+      for (auto &arg : args)
+      {
+        c_args.push_back(&arg[0]);
+      }
+      c_args.push_back(nullptr);
+
+      pid_t pid = fork();
+      if (pid == 0)
+      {
+        execvp(command.c_str(), c_args.data());
+        exit(1);
+      }
+      else if (pid > 0)
+      {
+        int status;
+        waitpid(pid, &status, 0);
+      }
+      else
+      {
+        std::cerr << "Fork Failed" << std::endl;
+      }
     }
     else
     {
-      std::cout << input << ": command not found" << std::endl;
+      std::cerr << input << ": command not found" << std::endl;
     }
   }
 

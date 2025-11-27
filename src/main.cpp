@@ -12,6 +12,47 @@
 std::unordered_set<std::string> builtins = {"echo", "type", "exit", "pwd",
                                             "cd"};
 
+// PARSE INPUT
+std::vector<std::string> parse_input(const std::string &input)
+{
+  std::vector<std::string> tokens;
+  std::string current_token;
+  bool in_sq = false; // single quotes
+  bool in_dq = false; // double quotes
+
+  for (char c : input)
+  {
+    if (c == ' ' && !in_sq && !in_dq)
+    {
+      if (!current_token.empty())
+      {
+        tokens.push_back(current_token);
+        current_token.clear();
+      }
+    }
+    else if (c == '\'' && !in_dq)
+    {
+      in_sq = !in_sq;
+    }
+    else if (c == '\"' && !in_sq)
+    {
+      in_dq = !in_dq;
+    }
+    else
+    {
+      current_token += c;
+    }
+  }
+
+  if (!current_token.empty())
+  {
+    tokens.push_back(current_token);
+  }
+
+  return tokens;
+}
+
+// CHECK IF COMMAND IS IN PATH
 std::string check_PATH(std::string command)
 {
   const char *path_env = std::getenv("PATH");
@@ -50,23 +91,22 @@ int main()
       break;
     }
 
-    std::stringstream ss(input);
-    std::string command;
-    ss >> command;
+    std::vector<std::string> args = parse_input(input);
 
-    std::string argument;
-    std::getline(ss, argument);
-
-    ss.clear();
-
-    if (!argument.empty() && argument[0] == ' ')
+    std::string command = args[0];
+    std::string arguments;
+    for (size_t i = 1; i < args.size(); i++)
     {
-      argument = argument.substr(1);
+      arguments += args[i];
+      if (i != args.size() - 1)
+      {
+        arguments += " ";
+      }
     }
 
     if (command == "echo")
     {
-      std::cout << argument << std::endl;
+      std::cout << arguments << std::endl;
     }
     else if (command == "pwd")
     {
@@ -76,53 +116,41 @@ int main()
     }
     else if (command == "cd")
     {
-      if (argument == "~")
+      if (args.size() == 1 && args[1] == "~")
       {
-        chdir(getenv("HOME"));
+        chdir(std::getenv("HOME"));
       }
       else
       {
-        if (chdir(argument.c_str()) == -1)
+        if (chdir(arguments.c_str()) == -1)
         {
-          std::cout << "cd: " << argument << ": No such file or directory"
+          std::cout << "cd: " << arguments << ": No such file or directory"
                     << std::endl;
         }
       }
     }
     else if (command == "type")
     {
-      if (builtins.count(argument))
+      if (builtins.count(args[1]))
       {
-        std::cout << argument << " is a shell builtin" << std::endl;
+        std::cout << args[1] << " is a shell builtin" << std::endl;
       }
       else
       {
-        std::string path = check_PATH(argument);
+        std::string path = check_PATH(args[1]);
         if (!path.empty())
         {
-          std::cout << argument << " is " << path << std::endl;
+          std::cout << args[1] << " is " << path << std::endl;
         }
         else
         {
-          std::cout << argument << ": not found" << std::endl;
+          std::cout << args[1] << ": not found" << std::endl;
         }
       }
     }
+    // EXECUTE COMMANDS LIKE UNIX SHELL AND CAT
     else if (!check_PATH(command).empty())
     {
-      std::vector<std::string> args;
-      args.push_back(command);
-
-      if (!argument.empty())
-      {
-        ss.str(argument);
-        std::string segment;
-        while (ss >> segment)
-        {
-          args.push_back(segment);
-        }
-      }
-
       std::vector<char *> c_args;
       for (auto &arg : args)
       {

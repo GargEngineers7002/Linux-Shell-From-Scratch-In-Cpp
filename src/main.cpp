@@ -116,7 +116,7 @@ int main()
     }
     else if (command == "cd")
     {
-      if (args.size() == 1 && args[1] == "~")
+      if (args.size() == 1 || args[1] == "~")
       {
         chdir(std::getenv("HOME"));
       }

@@ -1,4 +1,6 @@
 #include <cstdlib>
+#include <fcntl.h>
+#include <fstream>
 #include <iostream>
 #include <limits.h>
 #include <sstream>
@@ -118,6 +120,27 @@ int main()
     }
 
     std::vector<std::string> args = parse_input(input);
+    if (args.size() == 0)
+    {
+      continue;
+    }
+
+    std::string output_file;
+    bool output_redirect = false;
+
+    for (int i = 0; i < args.size(); i++)
+    {
+      if (args[i] == ">" || args[i] == "1>")
+      {
+        if (i + 1 < args.size())
+        {
+          output_file = args[i + 1];
+          output_redirect = true;
+          args.erase(args.begin() + i, args.begin() + i + 2);
+          break;
+        }
+      }
+    }
 
     std::string command = args[0];
     std::string arguments;
@@ -132,7 +155,19 @@ int main()
 
     if (command == "echo")
     {
+      std::streambuf *original_cout = nullptr;
+      std::ofstream file_stream;
+      if (output_redirect)
+      {
+        file_stream.open(output_file);
+        original_cout = std::cout.rdbuf();
+        std::cout.rdbuf(file_stream.rdbuf());
+      }
       std::cout << arguments << std::endl;
+      if (output_redirect)
+      {
+        std::cout.rdbuf(original_cout);
+      }
     }
     else if (command == "pwd")
     {
@@ -187,6 +222,18 @@ int main()
       pid_t pid = fork();
       if (pid == 0)
       {
+        if (output_redirect)
+        {
+          int fd =
+              open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          if (fd < 0)
+          {
+            perror("open");
+            exit(1);
+          }
+          dup2(fd, STDOUT_FILENO);
+          close(fd);
+        }
         execvp(command.c_str(), c_args.data());
         exit(1);
       }

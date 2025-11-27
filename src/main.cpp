@@ -19,10 +19,36 @@ std::vector<std::string> parse_input(const std::string &input)
   std::string current_token;
   bool in_sq = false; // single quotes
   bool in_dq = false; // double quotes
+  bool backslash = false;
 
   for (char c : input)
   {
-    if (c == ' ' && !in_sq && !in_dq)
+    if (backslash)
+    {
+      if (in_sq)
+      {
+        current_token += '\\';
+        current_token += c;
+      }
+      else if (in_dq)
+      {
+        if (c != '\"' && c != '\\')
+        {
+          current_token += '\\';
+        }
+        current_token += c;
+      }
+      else
+      {
+        current_token += c;
+      }
+      backslash = false;
+    }
+    else if (c == '\\')
+    {
+      backslash = true;
+    }
+    else if (c == ' ' && !in_sq && !in_dq)
     {
       if (!current_token.empty())
       {

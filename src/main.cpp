@@ -126,7 +126,8 @@ int main()
     }
 
     std::string output_file;
-    bool output_redirect = false;
+    bool redirect_stdout = false;
+    bool redirect_stderr = false;
 
     for (int i = 0; i < args.size(); i++)
     {
@@ -135,7 +136,17 @@ int main()
         if (i + 1 < args.size())
         {
           output_file = args[i + 1];
-          output_redirect = true;
+          redirect_stdout = true;
+          args.erase(args.begin() + i, args.begin() + i + 2);
+          break;
+        }
+      }
+      else if (args[i] == "2>")
+      {
+        if (i + 1 < args.size())
+        {
+          output_file = args[i + 1];
+          redirect_stderr = true;
           args.erase(args.begin() + i, args.begin() + i + 2);
           break;
         }
@@ -156,17 +167,34 @@ int main()
     if (command == "echo")
     {
       std::streambuf *original_cout = nullptr;
-      std::ofstream file_stream;
-      if (output_redirect)
+      std::streambuf *original_cerr = nullptr;
+      std::ofstream out_file_stream;
+      std::ofstream err_file_stream;
+
+      if (redirect_stdout)
       {
-        file_stream.open(output_file);
+        out_file_stream.open(output_file);
         original_cout = std::cout.rdbuf();
-        std::cout.rdbuf(file_stream.rdbuf());
+        std::cout.rdbuf(out_file_stream.rdbuf());
       }
+
+      if (redirect_stderr)
+      {
+        err_file_stream.open(output_file);
+        original_cerr = std::cerr.rdbuf();
+        std::cerr.rdbuf(err_file_stream.rdbuf());
+      }
+
       std::cout << arguments << std::endl;
-      if (output_redirect)
+
+      if (redirect_stdout)
       {
         std::cout.rdbuf(original_cout);
+      }
+
+      if (redirect_stderr)
+      {
+        std::cerr.rdbuf(original_cerr);
       }
     }
     else if (command == "pwd")
@@ -222,7 +250,7 @@ int main()
       pid_t pid = fork();
       if (pid == 0)
       {
-        if (output_redirect)
+        if (redirect_stdout || redirect_stderr)
         {
           int fd =
               open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -231,7 +259,14 @@ int main()
             perror("open");
             exit(1);
           }
-          dup2(fd, STDOUT_FILENO);
+          if (redirect_stdout)
+          {
+            dup2(fd, STDOUT_FILENO);
+          }
+          if (redirect_stderr)
+          {
+            dup2(fd, STDERR_FILENO);
+          }
           close(fd);
         }
         execvp(command.c_str(), c_args.data());

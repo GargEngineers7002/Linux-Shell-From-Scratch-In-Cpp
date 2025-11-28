@@ -1,3 +1,4 @@
+#include <cinttypes>
 #include <cstdlib>
 #include <fcntl.h>
 #include <fstream>
@@ -125,13 +126,36 @@ int main()
       continue;
     }
 
+    // REDIRECTION LOGIC
     std::string output_file;
     bool redirect_stdout = false;
+    bool append_redirect_stdout = false;
     bool redirect_stderr = false;
+    bool append_redirect_stderr = false;
 
     for (int i = 0; i < args.size(); i++)
     {
-      if (args[i] == ">" || args[i] == "1>")
+      if (args[i] == ">>" || args[i] == "1>>")
+      {
+        if (i + 1 < args.size())
+        {
+          output_file = args[i + 1];
+          append_redirect_stdout = true;
+          args.erase(args.begin() + i, args.begin() + i + 2);
+          break;
+        }
+      }
+      else if (args[i] == "2>>")
+      {
+        if (i + 1 < args.size())
+        {
+          output_file = args[i + 1];
+          append_redirect_stderr = true;
+          args.erase(args.begin() + i, args.begin() + i + 2);
+          break;
+        }
+      }
+      else if (args[i] == ">" || args[i] == "1>")
       {
         if (i + 1 < args.size())
         {
@@ -171,28 +195,30 @@ int main()
       std::ofstream out_file_stream;
       std::ofstream err_file_stream;
 
-      if (redirect_stdout)
+      if (redirect_stdout || append_redirect_stdout)
       {
-        out_file_stream.open(output_file);
+        auto mode = append_redirect_stdout ? std::ios::app : std::ios::trunc;
+        out_file_stream.open(output_file, mode);
         original_cout = std::cout.rdbuf();
         std::cout.rdbuf(out_file_stream.rdbuf());
       }
 
-      if (redirect_stderr)
+      if (redirect_stderr || append_redirect_stderr)
       {
-        err_file_stream.open(output_file);
+        auto mode = append_redirect_stderr ? std::ios::app : std::ios::trunc;
+        err_file_stream.open(output_file, mode);
         original_cerr = std::cerr.rdbuf();
         std::cerr.rdbuf(err_file_stream.rdbuf());
       }
 
       std::cout << arguments << std::endl;
 
-      if (redirect_stdout)
+      if (redirect_stdout || append_redirect_stdout)
       {
         std::cout.rdbuf(original_cout);
       }
 
-      if (redirect_stderr)
+      if (redirect_stderr || append_redirect_stderr)
       {
         std::cerr.rdbuf(original_cerr);
       }
@@ -250,20 +276,30 @@ int main()
       pid_t pid = fork();
       if (pid == 0)
       {
-        if (redirect_stdout || redirect_stderr)
+        bool is_stdout = redirect_stdout || append_redirect_stdout;
+        bool is_stderr = redirect_stderr || append_redirect_stderr;
+
+        if (is_stdout || is_stderr)
         {
-          int fd =
-              open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          int fd;
+          if (append_redirect_stdout || append_redirect_stderr)
+          {
+            fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+          }
+          else
+          {
+            fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          }
           if (fd < 0)
           {
             perror("open");
             exit(1);
           }
-          if (redirect_stdout)
+          if (is_stdout)
           {
             dup2(fd, STDOUT_FILENO);
           }
-          if (redirect_stderr)
+          if (is_stderr)
           {
             dup2(fd, STDERR_FILENO);
           }

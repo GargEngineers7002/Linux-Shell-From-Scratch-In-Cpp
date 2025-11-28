@@ -1,4 +1,3 @@
-#include <cinttypes>
 #include <cstdlib>
 #include <fcntl.h>
 #include <fstream>
@@ -12,8 +11,10 @@
 #include <unordered_set>
 #include <vector>
 
-std::unordered_set<std::string> builtins = {"echo", "type", "exit", "pwd",
-                                            "cd"};
+#include <readline/history.h>
+#include <readline/readline.h>
+
+std::vector<std::string> builtins = {"echo", "type", "exit", "pwd", "cd"};
 
 // PARSE INPUT
 std::vector<std::string> parse_input(const std::string &input)
@@ -103,18 +104,71 @@ std::string check_PATH(std::string command)
   return "";
 }
 
+// COMPLETION
+char *command_generator(const char *text, int state)
+{
+  static size_t list_index, len;
+
+  if (!state)
+  {
+    list_index = 0;
+    len = strlen(text);
+  }
+
+  while (list_index < builtins.size())
+  {
+    const std::string &name = builtins[list_index];
+    list_index++;
+
+    if (name.compare(0, len, text) == 0)
+    {
+      return strdup(name.c_str());
+    }
+  }
+
+  return nullptr;
+}
+char **custom_completion(const char *text, int start, int end)
+{
+  if (start == 0)
+  {
+    return rl_completion_matches(text, command_generator);
+  }
+
+  return nullptr;
+}
 int main()
 {
   // Flush after every std::cout / std:cerr
   std::cout << std::unitbuf;
   std::cerr << std::unitbuf;
 
+  std::unordered_set<std::string> builtins_set(builtins.begin(),
+                                               builtins.end());
+
+  rl_attempted_completion_function = custom_completion;
+
   // TODO: Uncomment the code below to pass the first stage
   while (true)
   {
-    std::cout << "$ ";
-    std::string input;
-    std::getline(std::cin, input);
+    char *input_c = readline("$ ");
+    if (!input_c)
+    {
+      break;
+    }
+
+    std::string input(input_c);
+    if (!input.empty())
+    {
+      add_history(input_c);
+    }
+    else
+    {
+      continue;
+    }
+
+    free(input_c);
+
     if (input == "exit")
     {
       break;
@@ -246,7 +300,7 @@ int main()
     }
     else if (command == "type")
     {
-      if (builtins.count(args[1]))
+      if (builtins_set.count(args[1]))
       {
         std::cout << args[1] << " is a shell builtin" << std::endl;
       }

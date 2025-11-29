@@ -17,7 +17,8 @@
 #include <dirent.h>
 #include <set>
 
-std::vector<std::string> builtins = {"echo", "type", "exit", "pwd", "cd"};
+std::vector<std::string> builtins = {"echo", "type", "exit",
+                                     "pwd",  "cd",   "history"};
 
 // PARSE INPUT
 std::vector<std::string> parse_input(const std::string &input)
@@ -177,6 +178,7 @@ char *command_generator(const char *text, int state)
 
   return nullptr;
 }
+
 char **custom_completion(const char *text, int start, int end)
 {
   if (start == 0)
@@ -186,6 +188,35 @@ char **custom_completion(const char *text, int start, int end)
 
   return nullptr;
 }
+
+// PIPE LOGIC
+std::vector<std::vector<std::string>>
+parse_pipeline(const std::vector<std::string> &args)
+{
+  std::vector<std::vector<std::string>> commands;
+  std::vector<std::string> current_command;
+
+  for (const auto &arg : args)
+  {
+    if (arg == "|")
+    {
+      if (!current_command.empty())
+      {
+        commands.push_back(current_command);
+        current_command.clear();
+      }
+    }
+    else
+    {
+      current_command.push_back(arg);
+    }
+  }
+  if (!current_command.empty())
+    commands.push_back(current_command);
+
+  return commands;
+}
+
 int main()
 {
   // Flush after every std::cout / std:cerr
@@ -229,201 +260,313 @@ int main()
       continue;
     }
 
-    // REDIRECTION LOGIC
-    std::string output_file;
-    bool redirect_stdout = false;
-    bool append_redirect_stdout = false;
-    bool redirect_stderr = false;
-    bool append_redirect_stderr = false;
-
-    for (int i = 0; i < args.size(); i++)
+    // PIPE LOGIC
+    bool has_pipe = false;
+    for (const auto &arg : args)
     {
-      if (args[i] == ">>" || args[i] == "1>>")
+      if (arg == "|")
       {
-        if (i + 1 < args.size())
-        {
-          output_file = args[i + 1];
-          append_redirect_stdout = true;
-          args.erase(args.begin() + i, args.begin() + i + 2);
-          break;
-        }
-      }
-      else if (args[i] == "2>>")
-      {
-        if (i + 1 < args.size())
-        {
-          output_file = args[i + 1];
-          append_redirect_stderr = true;
-          args.erase(args.begin() + i, args.begin() + i + 2);
-          break;
-        }
-      }
-      else if (args[i] == ">" || args[i] == "1>")
-      {
-        if (i + 1 < args.size())
-        {
-          output_file = args[i + 1];
-          redirect_stdout = true;
-          args.erase(args.begin() + i, args.begin() + i + 2);
-          break;
-        }
-      }
-      else if (args[i] == "2>")
-      {
-        if (i + 1 < args.size())
-        {
-          output_file = args[i + 1];
-          redirect_stderr = true;
-          args.erase(args.begin() + i, args.begin() + i + 2);
-          break;
-        }
+        has_pipe = true;
+        break;
       }
     }
 
-    std::string command = args[0];
-    std::string arguments;
-    for (size_t i = 1; i < args.size(); i++)
+    if (has_pipe)
     {
-      arguments += args[i];
-      if (i != args.size() - 1)
-      {
-        arguments += " ";
-      }
-    }
+      std::vector<std::vector<std::string>> commands = parse_pipeline(args);
+      int num_cmds = commands.size();
 
-    if (command == "echo")
-    {
-      std::streambuf *original_cout = nullptr;
-      std::streambuf *original_cerr = nullptr;
-      std::ofstream out_file_stream;
-      std::ofstream err_file_stream;
+      int prev_pipe_read = -1;
 
-      if (redirect_stdout || append_redirect_stdout)
-      {
-        auto mode = append_redirect_stdout ? std::ios::app : std::ios::trunc;
-        out_file_stream.open(output_file, mode);
-        original_cout = std::cout.rdbuf();
-        std::cout.rdbuf(out_file_stream.rdbuf());
-      }
+      std::vector<pid_t> pids;
 
-      if (redirect_stderr || append_redirect_stderr)
+      for (int i = 0; i < num_cmds; i++)
       {
-        auto mode = append_redirect_stderr ? std::ios::app : std::ios::trunc;
-        err_file_stream.open(output_file, mode);
-        original_cerr = std::cerr.rdbuf();
-        std::cerr.rdbuf(err_file_stream.rdbuf());
-      }
+        int pipe_fds[2];
 
-      std::cout << arguments << std::endl;
-
-      if (redirect_stdout || append_redirect_stdout)
-      {
-        std::cout.rdbuf(original_cout);
-      }
-
-      if (redirect_stderr || append_redirect_stderr)
-      {
-        std::cerr.rdbuf(original_cerr);
-      }
-    }
-    else if (command == "pwd")
-    {
-      char cwd[PATH_MAX];
-      getcwd(cwd, PATH_MAX);
-      std::cout << cwd << std::endl;
-    }
-    else if (command == "cd")
-    {
-      if (args.size() == 1 || args[1] == "~")
-      {
-        chdir(std::getenv("HOME"));
-      }
-      else
-      {
-        if (chdir(arguments.c_str()) == -1)
+        bool is_last = (i == num_cmds - 1);
+        if (!is_last)
         {
-          std::cout << "cd: " << arguments << ": No such file or directory"
-                    << std::endl;
-        }
-      }
-    }
-    else if (command == "type")
-    {
-      if (builtins_set.count(args[1]))
-      {
-        std::cout << args[1] << " is a shell builtin" << std::endl;
-      }
-      else
-      {
-        std::string path = check_PATH(args[1]);
-        if (!path.empty())
-        {
-          std::cout << args[1] << " is " << path << std::endl;
-        }
-        else
-        {
-          std::cout << args[1] << ": not found" << std::endl;
-        }
-      }
-    }
-    // EXECUTE COMMANDS LIKE UNIX SHELL AND CAT
-    else if (!check_PATH(command).empty())
-    {
-      std::vector<char *> c_args;
-      for (auto &arg : args)
-      {
-        c_args.push_back(&arg[0]);
-      }
-      c_args.push_back(nullptr);
-
-      pid_t pid = fork();
-      if (pid == 0)
-      {
-        bool is_stdout = redirect_stdout || append_redirect_stdout;
-        bool is_stderr = redirect_stderr || append_redirect_stderr;
-
-        if (is_stdout || is_stderr)
-        {
-          int fd;
-          if (append_redirect_stdout || append_redirect_stderr)
+          if (pipe(pipe_fds) == -1)
           {
-            fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
-          }
-          else
-          {
-            fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-          }
-          if (fd < 0)
-          {
-            perror("open");
+            perror("pipe");
             exit(1);
           }
-          if (is_stdout)
-          {
-            dup2(fd, STDOUT_FILENO);
-          }
-          if (is_stderr)
-          {
-            dup2(fd, STDERR_FILENO);
-          }
-          close(fd);
         }
-        execvp(command.c_str(), c_args.data());
-        exit(1);
+
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+          // CHILD PROCESS
+          if (prev_pipe_read != -1)
+          {
+            dup2(prev_pipe_read, STDIN_FILENO);
+            close(prev_pipe_read);
+          }
+
+          if (!is_last)
+          {
+            dup2(pipe_fds[1], STDOUT_FILENO);
+            close(pipe_fds[1]);
+            close(pipe_fds[0]);
+          }
+
+          std::vector<std::string> &command = commands[i];
+          std::string cmd_name = command[0];
+
+          if (cmd_name == "echo")
+          {
+            for (size_t j = 1; j < command.size(); j++)
+            {
+              std::cout << command[j];
+              if (j != command.size() - 1)
+              {
+                std::cout << " ";
+              }
+            }
+            std::cout << std::endl;
+          }
+          else if (cmd_name == "pwd")
+          {
+            char cwd[PATH_MAX];
+            getcwd(cwd, PATH_MAX);
+            std::cout << cwd << std::endl;
+          }
+          else if (cmd_name == "cd" || cmd_name == "type" || cmd_name == "exit")
+          {
+            exit(0);
+          }
+
+          std::vector<char *> c_args;
+          for (auto &arg : command)
+          {
+            c_args.push_back(&arg[0]);
+          }
+          c_args.push_back(nullptr);
+
+          execvp(cmd_name.c_str(), c_args.data());
+          exit(1);
+        }
+        pids.push_back(pid);
+
+        if (prev_pipe_read != -1)
+        {
+          close(prev_pipe_read);
+        }
+
+        if (!is_last)
+        {
+          prev_pipe_read = pipe_fds[0];
+          close(pipe_fds[1]);
+        }
       }
-      else if (pid > 0)
+
+      for (auto p : pids)
       {
-        int status;
-        waitpid(pid, &status, 0);
-      }
-      else
-      {
-        std::cerr << "Fork Failed" << std::endl;
+        waitpid(p, nullptr, 0);
       }
     }
     else
     {
-      std::cerr << input << ": command not found" << std::endl;
+      // REDIRECTION LOGIC
+      std::string output_file;
+      bool redirect_stdout = false;
+      bool append_redirect_stdout = false;
+      bool redirect_stderr = false;
+      bool append_redirect_stderr = false;
+
+      for (int i = 0; i < args.size(); i++)
+      {
+        if (args[i] == ">>" || args[i] == "1>>")
+        {
+          if (i + 1 < args.size())
+          {
+            output_file = args[i + 1];
+            append_redirect_stdout = true;
+            args.erase(args.begin() + i, args.begin() + i + 2);
+            break;
+          }
+        }
+        else if (args[i] == "2>>")
+        {
+          if (i + 1 < args.size())
+          {
+            output_file = args[i + 1];
+            append_redirect_stderr = true;
+            args.erase(args.begin() + i, args.begin() + i + 2);
+            break;
+          }
+        }
+        else if (args[i] == ">" || args[i] == "1>")
+        {
+          if (i + 1 < args.size())
+          {
+            output_file = args[i + 1];
+            redirect_stdout = true;
+            args.erase(args.begin() + i, args.begin() + i + 2);
+            break;
+          }
+        }
+        else if (args[i] == "2>")
+        {
+          if (i + 1 < args.size())
+          {
+            output_file = args[i + 1];
+            redirect_stderr = true;
+            args.erase(args.begin() + i, args.begin() + i + 2);
+            break;
+          }
+        }
+      }
+
+      // comamnd and arguments line assignment
+      std::string command = args[0];
+      std::string arguments;
+      for (size_t i = 1; i < args.size(); i++)
+      {
+        arguments += args[i];
+        if (i != args.size() - 1)
+        {
+          arguments += " ";
+        }
+      }
+
+      if (command == "echo")
+      {
+        std::streambuf *original_cout = nullptr;
+        std::streambuf *original_cerr = nullptr;
+        std::ofstream out_file_stream;
+        std::ofstream err_file_stream;
+
+        if (redirect_stdout || append_redirect_stdout)
+        {
+          auto mode = append_redirect_stdout ? std::ios::app : std::ios::trunc;
+          out_file_stream.open(output_file, mode);
+          original_cout = std::cout.rdbuf();
+          std::cout.rdbuf(out_file_stream.rdbuf());
+        }
+
+        if (redirect_stderr || append_redirect_stderr)
+        {
+          auto mode = append_redirect_stderr ? std::ios::app : std::ios::trunc;
+          err_file_stream.open(output_file, mode);
+          original_cerr = std::cerr.rdbuf();
+          std::cerr.rdbuf(err_file_stream.rdbuf());
+        }
+
+        std::cout << arguments << std::endl;
+
+        if (redirect_stdout || append_redirect_stdout)
+        {
+          std::cout.rdbuf(original_cout);
+        }
+
+        if (redirect_stderr || append_redirect_stderr)
+        {
+          std::cerr.rdbuf(original_cerr);
+        }
+      }
+      else if (command == "pwd")
+      {
+        char cwd[PATH_MAX];
+        getcwd(cwd, PATH_MAX);
+        std::cout << cwd << std::endl;
+      }
+      else if (command == "cd")
+      {
+        if (args.size() == 1 || args[1] == "~")
+        {
+          chdir(std::getenv("HOME"));
+        }
+        else
+        {
+          if (chdir(arguments.c_str()) == -1)
+          {
+            std::cout << "cd: " << arguments << ": No such file or directory"
+                      << std::endl;
+          }
+        }
+      }
+      else if (command == "type")
+      {
+        if (builtins_set.count(args[1]))
+        {
+          std::cout << args[1] << " is a shell builtin" << std::endl;
+        }
+        else
+        {
+          std::string path = check_PATH(args[1]);
+          if (!path.empty())
+          {
+            std::cout << args[1] << " is " << path << std::endl;
+          }
+          else
+          {
+            std::cout << args[1] << ": not found" << std::endl;
+          }
+        }
+      }
+      // EXECUTE EXTERNAL COMMANDS LIKE UNIX SHELL AND CAT
+      else if (!check_PATH(command).empty())
+      {
+        std::vector<char *> c_args;
+        for (auto &arg : args)
+        {
+          c_args.push_back(&arg[0]);
+        }
+        c_args.push_back(nullptr);
+
+        pid_t pid = fork();
+        if (pid == 0)
+        {
+          bool is_stdout = redirect_stdout || append_redirect_stdout;
+          bool is_stderr = redirect_stderr || append_redirect_stderr;
+
+          if (is_stdout || is_stderr)
+          {
+            int fd;
+            if (append_redirect_stdout || append_redirect_stderr)
+            {
+              fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_APPEND,
+                        0644);
+            }
+            else
+            {
+              fd =
+                  open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            }
+            if (fd < 0)
+            {
+              perror("open");
+              exit(1);
+            }
+            if (is_stdout)
+            {
+              dup2(fd, STDOUT_FILENO);
+            }
+            if (is_stderr)
+            {
+              dup2(fd, STDERR_FILENO);
+            }
+            close(fd);
+          }
+          execvp(command.c_str(), c_args.data());
+          exit(1);
+        }
+        else if (pid > 0)
+        {
+          int status;
+          waitpid(pid, &status, 0);
+        }
+        else
+        {
+          std::cerr << "Fork Failed" << std::endl;
+        }
+      }
+      else
+      {
+        std::cerr << input << ": command not found" << std::endl;
+      }
     }
   }
 

@@ -14,6 +14,9 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
+#include <dirent.h>
+#include <set>
+
 std::vector<std::string> builtins = {"echo", "type", "exit", "pwd", "cd"};
 
 // PARSE INPUT
@@ -107,23 +110,69 @@ std::string check_PATH(std::string command)
 // COMPLETION
 char *command_generator(const char *text, int state)
 {
-  static size_t list_index, len;
+  static std::vector<std::string> matches;
+  static size_t match_index;
 
-  if (!state)
+  if (state == 0)
   {
-    list_index = 0;
-    len = strlen(text);
+    matches.clear();
+    match_index = 0;
+
+    std::string text_str(text);
+
+    std::set<std::string> match_set;
+
+    // SEARCH BUILTINS
+    for (const auto &cmd : builtins)
+    {
+      if (cmd.compare(0, text_str.size(), text_str) == 0)
+      {
+        match_set.insert(cmd);
+      }
+    }
+
+    // SEARCH IN PATH
+    const char *path_env = std::getenv("PATH");
+    if (path_env)
+    {
+      std::string path_str(path_env);
+      std::stringstream ss(path_str);
+      std::string dir_path;
+
+      while (getline(ss, dir_path, ':'))
+      {
+        DIR *dir = opendir(dir_path.c_str());
+        if (!dir)
+          continue;
+
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != nullptr)
+        {
+          std::string filename = entry->d_name;
+          if (filename == "." || filename == "..")
+            continue;
+
+          if (filename.compare(0, text_str.size(), text_str) == 0)
+          {
+            std::string full_path = dir_path + '/' + filename;
+            if (access(full_path.c_str(), X_OK) == 0)
+            {
+              match_set.insert(filename);
+            }
+          }
+        }
+        closedir(dir);
+      }
+    }
+    for (const auto &m : match_set)
+    {
+      matches.push_back(m);
+    }
   }
 
-  while (list_index < builtins.size())
+  if (match_index < matches.size())
   {
-    const std::string &name = builtins[list_index];
-    list_index++;
-
-    if (name.compare(0, len, text) == 0)
-    {
-      return strdup(name.c_str());
-    }
+    return strdup(matches[match_index++].c_str());
   }
 
   return nullptr;

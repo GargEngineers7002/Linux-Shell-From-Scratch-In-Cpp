@@ -325,12 +325,14 @@ int main()
               }
             }
             std::cout << std::endl;
+            exit(0);
           }
           else if (cmd_name == "pwd")
           {
             char cwd[PATH_MAX];
             getcwd(cwd, PATH_MAX);
             std::cout << cwd << std::endl;
+            exit(0);
           }
           else if (cmd_name == "cd" || cmd_name == "type" || cmd_name == "exit")
           {

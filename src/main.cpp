@@ -334,7 +334,43 @@ int main()
             std::cout << cwd << std::endl;
             exit(0);
           }
-          else if (cmd_name == "cd" || cmd_name == "type" || cmd_name == "exit")
+          else if (cmd_name == "type")
+          {
+            if (builtins_set.count(command[1]))
+            {
+              std::cout << command[1] << " is a shell builtin" << std::endl;
+            }
+            else
+            {
+              std::string path = check_PATH(command[1]);
+              if (!path.empty())
+              {
+                std::cout << command[1] << " is " << path << std::endl;
+              }
+              else
+              {
+                std::cout << command[1] << ": not found" << std::endl;
+              }
+            }
+            exit(0);
+          }
+          else if (cmd_name == "cd")
+          {
+            if (command.size() == 1 || command[1] == "~")
+            {
+              chdir(std::getenv("HOME"));
+            }
+            else
+            {
+              if (chdir(command[1].c_str()) == -1)
+              {
+                std::cout << "cd: " << command[1]
+                          << ": No such file or directory" << std::endl;
+              }
+            }
+            exit(0);
+          }
+          else if (cmd_name == "exit")
           {
             exit(0);
           }

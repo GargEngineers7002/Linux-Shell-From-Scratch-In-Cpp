@@ -379,7 +379,8 @@ int main()
             {
               for (int i = 0; history[i]; i++)
               {
-                std::cout << i + 1 << " " << history[i]->line << std::endl;
+                std::cout << "    " << i + 1 << "  " << history[i]->line
+                          << std::endl;
               }
             }
             else
@@ -389,7 +390,8 @@ int main()
               {
                 if (i >= num)
                 {
-                  std::cout << (i + 1) << " " << history[i]->line << std::endl;
+                  std::cout << "    " << (i + 1) << "  " << history[i]->line
+                            << std::endl;
                 }
               }
             }
@@ -578,7 +580,8 @@ int main()
         {
           for (int i = 0; history[i]; i++)
           {
-            std::cout << i + 1 << " " << history[i]->line << std::endl;
+            std::cout << "    " << i + 1 << "  " << history[i]->line
+                      << std::endl;
           }
         }
         else
@@ -588,7 +591,8 @@ int main()
           {
             if (i >= num)
             {
-              std::cout << (i + 1) << " " << history[i]->line << std::endl;
+              std::cout << "    " << (i + 1) << "  " << history[i]->line
+                        << std::endl;
             }
           }
         }

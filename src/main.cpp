@@ -241,14 +241,15 @@ int main()
     {
       add_history(input_c);
     }
-    else
-    {
-      continue;
-    }
 
     std::string input(input_c);
 
     free(input_c);
+
+    if (input.empty())
+    {
+      continue;
+    }
 
     if (input == "exit")
     {

@@ -225,6 +225,13 @@ int main()
 
   static int history_file_cursor = 0;
 
+  char *history_file = std::getenv("HISTFILE");
+  if (history_file)
+  {
+    read_history(history_file);
+    history_file_cursor = history_length;
+  }
+
   std::unordered_set<std::string> builtins_set(builtins.begin(),
                                                builtins.end());
 
@@ -732,6 +739,20 @@ int main()
       {
         std::cerr << input << ": command not found" << std::endl;
       }
+    }
+  }
+
+  if (history_file)
+  {
+    int lines_to_append = history_length - history_file_cursor;
+    if (append_history(lines_to_append, history_file) != 0)
+    {
+      std::cerr << "history: " << history_file << ": No such file or directory"
+                << std::endl;
+    }
+    else
+    {
+      history_file_cursor = history_length;
     }
   }
 

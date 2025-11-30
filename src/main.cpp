@@ -390,10 +390,18 @@ int main()
                           << ": No such file or directory" << std::endl;
               }
             }
+            else if (command.size() >= 3 && command[1] == "-a")
+            {
+              if (append_history(history_length, command[2].c_str()) != 0)
+              {
+                std::cerr << "history: " << command[2]
+                          << ": No such file or directory" << std::endl;
+              }
+            }
             else
             {
               HIST_ENTRY **history = history_list();
-              int history_size = history_length;
+              int history_length = history_length;
               if (command.size() == 1)
               {
                 for (int i = 0; history[i]; i++)
@@ -404,7 +412,7 @@ int main()
               }
               else
               {
-                int num = history_size - std::stoi(command[1]);
+                int num = history_length - std::stoi(command[1]);
                 for (int i = num; history[i]; i++)
                 {
                   if (i >= num)
@@ -610,10 +618,17 @@ int main()
                       << std::endl;
           }
         }
+        else if (args.size() >= 3 && args[1] == "-a")
+        {
+          if (append_history(history_length, args[2].c_str()) != 0)
+          {
+            std::cerr << "history: " << args[2] << ": No such file or directory"
+                      << std::endl;
+          }
+        }
         else
         {
           HIST_ENTRY **history = history_list();
-          int history_size = history_length;
           if (args.size() == 1)
           {
             for (int i = 0; history[i]; i++)
@@ -624,7 +639,7 @@ int main()
           }
           else
           {
-            int num = history_size - std::stoi(args[1]);
+            int num = history_length - std::stoi(args[1]);
             for (int i = num; history[i]; i++)
             {
               if (i >= num)

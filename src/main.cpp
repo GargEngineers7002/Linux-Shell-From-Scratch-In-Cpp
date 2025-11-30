@@ -223,6 +223,8 @@ int main()
   std::cout << std::unitbuf;
   std::cerr << std::unitbuf;
 
+  static int history_file_cursor = 0;
+
   std::unordered_set<std::string> builtins_set(builtins.begin(),
                                                builtins.end());
 
@@ -381,6 +383,10 @@ int main()
                 std::cerr << "history: " << command[2]
                           << ": No such file or directory" << std::endl;
               }
+              else
+              {
+                history_file_cursor = history_length;
+              }
             }
             else if (command.size() >= 3 && command[1] == "-w")
             {
@@ -392,10 +398,15 @@ int main()
             }
             else if (command.size() >= 3 && command[1] == "-a")
             {
-              if (append_history(history_length, command[2].c_str()) != 0)
+              int lines_to_append = history_length - history_file_cursor;
+              if (append_history(lines_to_append, command[2].c_str()) != 0)
               {
                 std::cerr << "history: " << command[2]
                           << ": No such file or directory" << std::endl;
+              }
+              else
+              {
+                history_file_cursor = history_length;
               }
             }
             else
@@ -609,6 +620,10 @@ int main()
             std::cerr << "history: " << args[2] << ": No such file or directory"
                       << std::endl;
           }
+          else
+          {
+            history_file_cursor = history_length;
+          }
         }
         else if (args.size() >= 3 && args[1] == "-w")
         {
@@ -620,10 +635,15 @@ int main()
         }
         else if (args.size() >= 3 && args[1] == "-a")
         {
-          if (append_history(history_length, args[2].c_str()) != 0)
+          int lines_to_append = history_length - history_file_cursor;
+          if (append_history(lines_to_append, args[2].c_str()) != 0)
           {
             std::cerr << "history: " << args[2] << ": No such file or directory"
                       << std::endl;
+          }
+          else
+          {
+            history_file_cursor = history_length;
           }
         }
         else

@@ -374,25 +374,44 @@ int main()
           }
           else if (cmd_name == "history")
           {
-            HIST_ENTRY **history = history_list();
-            int history_size = history_length;
-            if (command.size() == 1)
+            if (command.size() >= 3 && command[1] == "-r")
             {
-              for (int i = 0; history[i]; i++)
+              if (read_history(command[2].c_str()) != 0)
               {
-                std::cout << "    " << i + 1 << "  " << history[i]->line
-                          << std::endl;
+                std::cerr << "history: " << command[2]
+                          << ": No such file or directory" << std::endl;
+              }
+            }
+            else if (command.size() >= 3 && command[1] == "-w")
+            {
+              if (write_history(command[2].c_str()) != 0)
+              {
+                std::cerr << "history: " << command[2]
+                          << ": No such file or directory" << std::endl;
               }
             }
             else
             {
-              int num = history_size - std::stoi(command[1]);
-              for (int i = num; history[i]; i++)
+              HIST_ENTRY **history = history_list();
+              int history_size = history_length;
+              if (command.size() == 1)
               {
-                if (i >= num)
+                for (int i = 0; history[i]; i++)
                 {
-                  std::cout << "    " << (i + 1) << "  " << history[i]->line
+                  std::cout << "    " << i + 1 << "  " << history[i]->line
                             << std::endl;
+                }
+              }
+              else
+              {
+                int num = history_size - std::stoi(command[1]);
+                for (int i = num; history[i]; i++)
+                {
+                  if (i >= num)
+                  {
+                    std::cout << "    " << (i + 1) << "  " << history[i]->line
+                              << std::endl;
+                  }
                 }
               }
             }
@@ -575,25 +594,44 @@ int main()
       }
       else if (command == "history")
       {
-        HIST_ENTRY **history = history_list();
-        int history_size = history_length;
-        if (args.size() == 1)
+        if (args.size() >= 3 && args[1] == "-r")
         {
-          for (int i = 0; history[i]; i++)
+          if (read_history(args[2].c_str()) != 0)
           {
-            std::cout << "    " << i + 1 << "  " << history[i]->line
+            std::cerr << "history: " << args[2] << ": No such file or directory"
+                      << std::endl;
+          }
+        }
+        else if (args.size() >= 3 && args[1] == "-w")
+        {
+          if (write_history(args[2].c_str()) != 0)
+          {
+            std::cerr << "history: " << args[2] << ": No such file or directory"
                       << std::endl;
           }
         }
         else
         {
-          int num = history_size - std::stoi(args[1]);
-          for (int i = num; history[i]; i++)
+          HIST_ENTRY **history = history_list();
+          int history_size = history_length;
+          if (args.size() == 1)
           {
-            if (i >= num)
+            for (int i = 0; history[i]; i++)
             {
-              std::cout << "    " << (i + 1) << "  " << history[i]->line
+              std::cout << "    " << i + 1 << "  " << history[i]->line
                         << std::endl;
+            }
+          }
+          else
+          {
+            int num = history_size - std::stoi(args[1]);
+            for (int i = num; history[i]; i++)
+            {
+              if (i >= num)
+              {
+                std::cout << "    " << (i + 1) << "  " << history[i]->line
+                          << std::endl;
+              }
             }
           }
         }

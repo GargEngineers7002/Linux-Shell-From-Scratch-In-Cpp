@@ -577,7 +577,7 @@ int main()
       {
         HIST_ENTRY **history = history_list();
         int history_size = history_length;
-        if (command.size() == 1)
+        if (args.size() == 1)
         {
           for (int i = 0; history[i]; i++)
           {

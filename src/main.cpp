@@ -389,7 +389,7 @@ int main()
               {
                 if (i >= num)
                 {
-                  std::cout << i + 1 << " " << history[i]->line << std::endl;
+                  std::cout << (i + 1) << " " << history[i]->line << std::endl;
                 }
               }
             }
@@ -588,7 +588,7 @@ int main()
           {
             if (i >= num)
             {
-              std::cout << i + 1 << " " << history[i]->line << std::endl;
+              std::cout << (i + 1) << " " << history[i]->line << std::endl;
             }
           }
         }

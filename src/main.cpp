@@ -745,14 +745,17 @@ int main()
   if (history_file)
   {
     int lines_to_append = history_length - history_file_cursor;
-    if (append_history(lines_to_append, history_file) != 0)
+    if (lines_to_append > 0)
     {
-      std::cerr << "history: " << history_file << ": No such file or directory"
-                << std::endl;
-    }
-    else
-    {
-      history_file_cursor = history_length;
+      if (append_history(lines_to_append, history_file) != 0)
+      {
+        std::cerr << "history: " << history_file
+                  << ": No such file or directory" << std::endl;
+      }
+      else
+      {
+        history_file_cursor = history_length;
+      }
     }
   }
 

@@ -237,8 +237,7 @@ int main()
       break;
     }
 
-    std::string input(input_c);
-    if (!input.empty())
+    if (input_c[0] != '\0')
     {
       add_history(input_c);
     }
@@ -246,6 +245,8 @@ int main()
     {
       continue;
     }
+
+    std::string input(input_c);
 
     free(input_c);
 
@@ -370,6 +371,30 @@ int main()
             }
             exit(0);
           }
+          else if (cmd_name == "history")
+          {
+            HIST_ENTRY **history = history_list();
+            int history_size = history_length;
+            if (command.size() == 1)
+            {
+              for (int i = 0; history[i]; i++)
+              {
+                std::cout << i + 1 << " " << history[i]->line << std::endl;
+              }
+            }
+            else
+            {
+              int num = history_size - std::stoi(command[1]);
+              for (int i = num; history[i]; i++)
+              {
+                if (i >= num)
+                {
+                  std::cout << i + 1 << " " << history[i]->line << std::endl;
+                }
+              }
+            }
+            exit(0);
+          }
           else if (cmd_name == "exit")
           {
             exit(0);
@@ -383,6 +408,7 @@ int main()
           c_args.push_back(nullptr);
 
           execvp(cmd_name.c_str(), c_args.data());
+          std::cerr << cmd_name << ": command not found" << std::endl;
           exit(1);
         }
         pids.push_back(pid);
@@ -541,6 +567,29 @@ int main()
           else
           {
             std::cout << args[1] << ": not found" << std::endl;
+          }
+        }
+      }
+      else if (command == "history")
+      {
+        HIST_ENTRY **history = history_list();
+        int history_size = history_length;
+        if (command.size() == 1)
+        {
+          for (int i = 0; history[i]; i++)
+          {
+            std::cout << i + 1 << " " << history[i]->line << std::endl;
+          }
+        }
+        else
+        {
+          int num = history_size - std::stoi(args[1]);
+          for (int i = num; history[i]; i++)
+          {
+            if (i >= num)
+            {
+              std::cout << i + 1 << " " << history[i]->line << std::endl;
+            }
           }
         }
       }
